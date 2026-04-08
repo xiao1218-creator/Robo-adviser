@@ -17,6 +17,10 @@ const chinaBpsEl = document.getElementById("chinaBps");
 let chart;
 let currentSeriesByEntity = {};
 let currentDateLabels = [];
+let currentSourceStatus = {};
+
+const COINGECKO_COMPANIES_URL = "https://api.coingecko.com/api/v3/companies/public_treasury/bitcoin";
+const ALL_ORIGINS_RAW = "https://api.allorigins.win/raw?url=";
 
 const ENTITY_META = {
   MSTR: { label: "Strategy (MSTR)", color: "#58a6ff", inputEl: mstrBpsEl },
@@ -25,6 +29,12 @@ const ENTITY_META = {
   US: { label: "US", color: "#f2cc60", inputEl: usBpsEl },
   UK: { label: "UK", color: "#ffa657", inputEl: ukBpsEl },
   CHINA: { label: "China", color: "#ff7b72", inputEl: chinaBpsEl },
+};
+
+const GOV_PAGE_BY_ENTITY = {
+  US: "https://bitcointreasuries.net/governments/united-states",
+  UK: "https://bitcointreasuries.net/governments/united-kingdom",
+  CHINA: "https://bitcointreasuries.net/governments/china",
 };
 
 function toNum(v, digits = 2) {
@@ -73,6 +83,91 @@ function makeSteppedSeries(currentValue, entity) {
     const stepIdx = Math.min(steps.length - 1, Math.floor(idx / bucket));
     return [date, currentValue * steps[stepIdx]];
   });
+}
+
+function parseHoldingNumber(text) {
+  if (!text) return null;
+  const cleaned = text.replace(/,/g, "").trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseGovHoldingFromHtml(html) {
+  if (!html) return null;
+  const patterns = [
+    /BTC balance[\s\S]{0,120}?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?)/i,
+    /hold\s+([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?)\s*BTC/i,
+  ];
+  for (const p of patterns) {
+    const m = html.match(p);
+    if (m?.[1]) {
+      const n = parseHoldingNumber(m[1]);
+      if (n !== null) return n;
+    }
+  }
+  return null;
+}
+
+async function fetchCoinGeckoCompanyHoldings() {
+  const res = await fetch(COINGECKO_COMPANIES_URL);
+  if (!res.ok) throw new Error("CoinGecko companies request failed.");
+  const payload = await res.json();
+  const companies = payload?.companies || [];
+  const bySymbol = {};
+  companies.forEach((c) => {
+    const s = String(c.symbol || "").toUpperCase();
+    if (s.startsWith("MSTR")) bySymbol.MSTR = Number(c.total_holdings);
+    if (s.startsWith("BMNR")) bySymbol.BMNR = Number(c.total_holdings);
+    if (s.startsWith("XXI")) bySymbol.XXI = Number(c.total_holdings);
+  });
+  return bySymbol;
+}
+
+async function fetchGovHolding(entity) {
+  const url = GOV_PAGE_BY_ENTITY[entity];
+  if (!url) return null;
+  const proxied = `${ALL_ORIGINS_RAW}${encodeURIComponent(url)}`;
+  const res = await fetch(proxied);
+  if (!res.ok) throw new Error(`Government source failed for ${entity}.`);
+  const html = await res.text();
+  return parseGovHoldingFromHtml(html);
+}
+
+async function fetchLiveHoldings() {
+  const currentManual = {
+    MSTR: Number(mstrBpsEl.value),
+    BMNR: Number(bmnrBpsEl.value),
+    XXI: Number(xxiBpsEl.value),
+    US: Number(usBpsEl.value),
+    UK: Number(ukBpsEl.value),
+    CHINA: Number(chinaBpsEl.value),
+  };
+
+  const [cg, us, uk, china] = await Promise.all([
+    fetchCoinGeckoCompanyHoldings().catch(() => ({})),
+    fetchGovHolding("US").catch(() => null),
+    fetchGovHolding("UK").catch(() => null),
+    fetchGovHolding("CHINA").catch(() => null),
+  ]);
+
+  currentSourceStatus = {};
+  const resolved = {
+    MSTR: Number.isFinite(cg.MSTR) ? cg.MSTR : currentManual.MSTR,
+    BMNR: Number.isFinite(cg.BMNR) ? cg.BMNR : currentManual.BMNR,
+    XXI: Number.isFinite(cg.XXI) ? cg.XXI : currentManual.XXI,
+    US: Number.isFinite(us) ? us : currentManual.US,
+    UK: Number.isFinite(uk) ? uk : currentManual.UK,
+    CHINA: Number.isFinite(china) ? china : currentManual.CHINA,
+  };
+
+  currentSourceStatus.MSTR = Number.isFinite(cg.MSTR) ? "CoinGecko" : "Manual";
+  currentSourceStatus.BMNR = Number.isFinite(cg.BMNR) ? "CoinGecko" : "Manual";
+  currentSourceStatus.XXI = Number.isFinite(cg.XXI) ? "CoinGecko" : "Manual";
+  currentSourceStatus.US = Number.isFinite(us) ? "BitcoinTreasuries" : "Manual";
+  currentSourceStatus.UK = Number.isFinite(uk) ? "BitcoinTreasuries" : "Manual";
+  currentSourceStatus.CHINA = Number.isFinite(china) ? "BitcoinTreasuries" : "Manual";
+
+  return resolved;
 }
 
 function getSelectedEntitySeries() {
@@ -127,20 +222,34 @@ function renderStats() {
     .join("");
 }
 
-function fetchData() {
+async function fetchData() {
   currentDateLabels = buildDateLabels();
+  summaryEl.textContent = "Loading live holdings from multiple sources...";
+  const live = await fetchLiveHoldings();
+
+  // Sync inputs with latest fetched values so UI is transparent.
+  mstrBpsEl.value = String(Math.round(live.MSTR));
+  bmnrBpsEl.value = String(Math.round(live.BMNR));
+  xxiBpsEl.value = String(Math.round(live.XXI));
+  usBpsEl.value = String(Math.round(live.US));
+  ukBpsEl.value = String(Math.round(live.UK));
+  chinaBpsEl.value = String(Math.round(live.CHINA));
+
   currentSeriesByEntity = {
-    MSTR: makeSteppedSeries(Number(mstrBpsEl.value), "MSTR"),
-    BMNR: makeSteppedSeries(Number(bmnrBpsEl.value), "BMNR"),
-    XXI: makeSteppedSeries(Number(xxiBpsEl.value), "XXI"),
-    US: makeSteppedSeries(Number(usBpsEl.value), "US"),
-    UK: makeSteppedSeries(Number(ukBpsEl.value), "UK"),
-    CHINA: makeSteppedSeries(Number(chinaBpsEl.value), "CHINA"),
+    MSTR: makeSteppedSeries(live.MSTR, "MSTR"),
+    BMNR: makeSteppedSeries(live.BMNR, "BMNR"),
+    XXI: makeSteppedSeries(live.XXI, "XXI"),
+    US: makeSteppedSeries(live.US, "US"),
+    UK: makeSteppedSeries(live.UK, "UK"),
+    CHINA: makeSteppedSeries(live.CHINA, "CHINA"),
   };
 
   renderChart();
   renderStats();
-  summaryEl.textContent = "Loaded stepped BTC holdings series over time. Update values to reflect latest disclosures.";
+  const status = Object.entries(currentSourceStatus)
+    .map(([k, v]) => `${k}:${v}`)
+    .join(" | ");
+  summaryEl.textContent = `Loaded stepped BTC holdings from live sources. ${status}`;
 }
 
 function fallbackSummary() {
@@ -203,4 +312,6 @@ indicatorEl.addEventListener("change", () => {
   renderStats();
 });
 
-fetchData();
+fetchData().catch((err) => {
+  summaryEl.textContent = `Failed to load live sources: ${err.message}`;
+});
