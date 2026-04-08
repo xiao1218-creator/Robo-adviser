@@ -88,8 +88,13 @@
           Paste your LLM API key locally (not stored). If empty, a rule-based summary is shown.
         </p>
         <div class="ai-controls">
-          <label for="openAiKey">OpenAI API Key</label>
-          <input id="openAiKey" type="password" placeholder="sk-..." />
+          <label for="llmProvider">LLM Provider</label>
+          <select id="llmProvider">
+            <option value="gemini" selected>Gemini</option>
+            <option value="openai">OpenAI</option>
+          </select>
+          <label for="llmKey">API Key</label>
+          <input id="llmKey" type="password" placeholder="API key..." />
           <button id="summarizeBtn">Generate Summary</button>
         </div>
         <article id="summary" class="summary">Click "Generate Summary" to analyze the selected indicator.</article>

@@ -30,7 +30,7 @@ Public APIs:
 - Lookback window selection (90/180/365/max days)
 - Editable BTC/share assumptions per company/proxy
 - Quick stats (latest, average, min, max)
-- Optional AI-generated summary via OpenAI API
+- Optional AI-generated summary via Gemini or OpenAI API
   - If no API key is entered, a built-in rule-based summary is shown
 
 ## mNAV Formula
@@ -65,5 +65,5 @@ vercel --prod
 
 ## Notes
 
-- The optional OpenAI key is only used in-browser and is not persisted by this app.
+- The optional Gemini/OpenAI key is only used in-browser and is not persisted by this app.
 - For production-grade security, proxy LLM requests through a backend/API route instead of direct browser calls.

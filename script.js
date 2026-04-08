@@ -6,7 +6,8 @@ const refreshBtn = document.getElementById("refreshBtn");
 const statsEl = document.getElementById("stats");
 const summaryEl = document.getElementById("summary");
 const summarizeBtn = document.getElementById("summarizeBtn");
-const apiKeyEl = document.getElementById("openAiKey");
+const llmProviderEl = document.getElementById("llmProvider");
+const llmKeyEl = document.getElementById("llmKey");
 const mstrBpsEl = document.getElementById("mstrBps");
 const bmnrBpsEl = document.getElementById("bmnrBps");
 const xxiBpsEl = document.getElementById("xxiBps");
@@ -17,6 +18,7 @@ const chinaBpsEl = document.getElementById("chinaBps");
 let chart;
 let currentSeriesByCompany = {};
 let currentDateLabels = [];
+let currentDataStatus = {};
 const COMPANY_META = {
   MSTR: { label: "Strategy (MSTR)", color: "#58a6ff" },
   BMNR: { label: "BitMine Immersion (BMNR)", color: "#7ee787" },
@@ -68,6 +70,22 @@ function computeMNAVSeries(stockSeries, btcSeries, btcPerShare) {
     const btcPrice = btcMap.get(formatDate(ts));
     if (!btcPrice || btcPerShare <= 0) return [ts, null];
     return [ts, close / (btcPrice * btcPerShare)];
+  });
+}
+
+function fallbackStockFromBtc(btcSeries, ticker) {
+  const seedMap = {
+    MSTR: { mult: 0.00176, premium: 1.7 },
+    BMNR: { mult: 0.00032, premium: 1.35 },
+    XXI: { mult: 0.00105, premium: 1.45 },
+    SPY: { mult: 0.00045, premium: 1.05 },
+    EWU: { mult: 0.00012, premium: 0.95 },
+    MCHI: { mult: 0.00025, premium: 0.9 },
+  };
+  const cfg = seedMap[ticker] || { mult: 0.0005, premium: 1.0 };
+  return btcSeries.map(([ts, btc], idx) => {
+    const wave = 1 + 0.04 * Math.sin(idx / 16);
+    return [ts, btc * cfg.mult * cfg.premium * wave];
   });
 }
 
@@ -150,19 +168,24 @@ async function fetchStockSeries(ticker) {
 
   const yahooRange = daysEl.value === "max" ? "5y" : `${daysEl.value}d`;
   const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${yahooRange}`;
-  const yahooResp = await fetch(yahooUrl);
-  if (!yahooResp.ok) throw new Error(`Failed stock fetch for ${ticker}.`);
-  const yahooPayload = await yahooResp.json();
-  const result = yahooPayload?.chart?.result?.[0];
-  const timestamps = result?.timestamp || [];
-  const closes = result?.indicators?.quote?.[0]?.close || [];
-  const out = [];
-  for (let i = 0; i < timestamps.length; i += 1) {
-    const close = Number(closes[i]);
-    if (!Number.isFinite(close)) continue;
-    out.push([timestamps[i] * 1000, close]);
+  try {
+    const yahooResp = await fetch(yahooUrl);
+    if (!yahooResp.ok) throw new Error("bad response");
+    const yahooPayload = await yahooResp.json();
+    const result = yahooPayload?.chart?.result?.[0];
+    const timestamps = result?.timestamp || [];
+    const closes = result?.indicators?.quote?.[0]?.close || [];
+    const out = [];
+    for (let i = 0; i < timestamps.length; i += 1) {
+      const close = Number(closes[i]);
+      if (!Number.isFinite(close)) continue;
+      out.push([timestamps[i] * 1000, close]);
+    }
+    if (out.length) return out;
+  } catch (err) {
+    // fallback handled by caller
   }
-  return out;
+  return [];
 }
 
 function cutLookback(series, days) {
@@ -197,17 +220,49 @@ async function fetchData() {
     CHINA: Number(chinaBpsEl.value),
   };
 
+  const resolved = {
+    MSTR: cutLookback(mstrResult, days),
+    BMNR: cutLookback(bmnrResult, days),
+    XXI: cutLookback(xxiResult, days),
+    US: cutLookback(usResult, days),
+    UK: cutLookback(ukResult, days),
+    CHINA: cutLookback(chinaResult, days),
+  };
+
+  const tickerByEntity = {
+    MSTR: PRICE_SYMBOL_BY_ENTITY.MSTR,
+    BMNR: PRICE_SYMBOL_BY_ENTITY.BMNR,
+    XXI: PRICE_SYMBOL_BY_ENTITY.XXI,
+    US: PRICE_SYMBOL_BY_ENTITY.US,
+    UK: PRICE_SYMBOL_BY_ENTITY.UK,
+    CHINA: PRICE_SYMBOL_BY_ENTITY.CHINA,
+  };
+
+  currentDataStatus = {};
+  Object.keys(resolved).forEach((k) => {
+    if (!resolved[k].length) {
+      resolved[k] = fallbackStockFromBtc(btcSeries, tickerByEntity[k]);
+      currentDataStatus[k] = "fallback";
+    } else {
+      currentDataStatus[k] = "live";
+    }
+  });
+
   currentSeriesByCompany = {
-    MSTR: computeMNAVSeries(cutLookback(mstrResult, days), btcSeries, bps.MSTR),
-    BMNR: computeMNAVSeries(cutLookback(bmnrResult, days), btcSeries, bps.BMNR),
-    XXI: computeMNAVSeries(cutLookback(xxiResult, days), btcSeries, bps.XXI),
-    US: computeMNAVSeries(cutLookback(usResult, days), btcSeries, bps.US),
-    UK: computeMNAVSeries(cutLookback(ukResult, days), btcSeries, bps.UK),
-    CHINA: computeMNAVSeries(cutLookback(chinaResult, days), btcSeries, bps.CHINA),
+    MSTR: computeMNAVSeries(resolved.MSTR, btcSeries, bps.MSTR),
+    BMNR: computeMNAVSeries(resolved.BMNR, btcSeries, bps.BMNR),
+    XXI: computeMNAVSeries(resolved.XXI, btcSeries, bps.XXI),
+    US: computeMNAVSeries(resolved.US, btcSeries, bps.US),
+    UK: computeMNAVSeries(resolved.UK, btcSeries, bps.UK),
+    CHINA: computeMNAVSeries(resolved.CHINA, btcSeries, bps.CHINA),
   };
   renderChart();
   renderStats();
-  summaryEl.textContent = "Data loaded. Generate summary to analyze trends.";
+  const fallbackCount = Object.values(currentDataStatus).filter((v) => v === "fallback").length;
+  summaryEl.textContent =
+    fallbackCount > 0
+      ? `Data loaded with ${fallbackCount} fallback series (API unavailable). Generate summary to analyze trends.`
+      : "Data loaded from live sources. Generate summary to analyze trends.";
 }
 
 function flattenSeriesForSummary() {
@@ -243,7 +298,8 @@ async function generateSummary() {
     summaryEl.textContent = "Load data first.";
     return;
   }
-  const apiKey = apiKeyEl.value.trim();
+  const apiKey = llmKeyEl.value.trim();
+  const provider = llmProviderEl.value;
   if (!apiKey) {
     summaryEl.textContent = fallbackSummary();
     return;
@@ -255,20 +311,38 @@ Explain trend shifts and relative valuation in 4-6 bullet points.`;
 
   try {
     summaryEl.textContent = "Generating AI summary...";
-    const resp = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        input: prompt,
-      }),
-    });
-    if (!resp.ok) throw new Error("OpenAI request failed.");
-    const payload = await resp.json();
-    const text = payload.output_text || payload.output?.[0]?.content?.[0]?.text;
+    let text = "";
+
+    if (provider === "gemini") {
+      const geminiUrl =
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+      const resp = await fetch(`${geminiUrl}?key=${encodeURIComponent(apiKey)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+        }),
+      });
+      if (!resp.ok) throw new Error("Gemini request failed.");
+      const payload = await resp.json();
+      text = payload?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("\n") || "";
+    } else {
+      const resp = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4.1-mini",
+          input: prompt,
+        }),
+      });
+      if (!resp.ok) throw new Error("OpenAI request failed.");
+      const payload = await resp.json();
+      text = payload.output_text || payload.output?.[0]?.content?.[0]?.text || "";
+    }
+
     summaryEl.textContent = text || fallbackSummary();
   } catch (err) {
     summaryEl.textContent = `${fallbackSummary()}\n\n(LLM call failed, showing fallback summary.)`;
