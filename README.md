@@ -6,10 +6,13 @@ This project is a lightweight website for observing daily mNAV behavior for sele
 
 Primary indicator: **mNAV**.
 
-Tracked companies:
+Tracked entities:
 - Strategy (`MSTR`)
 - BitMine Immersion (`BMNR`)
 - XXI (`XXI`)
+- US proxy (`SPY`)
+- UK proxy (`EWU`)
+- China proxy (`MCHI`)
 
 ## Data Source
 
@@ -25,7 +28,7 @@ Public APIs:
 - Daily time-series mNAV chart
 - Company selection (single or combined)
 - Lookback window selection (90/180/365/max days)
-- Editable BTC/share assumptions per company
+- Editable BTC/share assumptions per company/proxy
 - Quick stats (latest, average, min, max)
 - Optional AI-generated summary via OpenAI API
   - If no API key is entered, a built-in rule-based summary is shown
@@ -37,6 +40,7 @@ The dashboard uses:
 `mNAV = Stock Price / (BTC Price x BTC Per Share)`
 
 BTC/share defaults are editable in the UI so you can keep assumptions updated with latest filings.
+For US/UK/China, the dashboard uses ETF proxies (SPY/EWU/MCHI) as the numerator price series.
 
 ## Local Run
 

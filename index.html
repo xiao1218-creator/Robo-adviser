@@ -13,7 +13,7 @@
       <header class="header">
         <h1>mNAV Tracker Dashboard</h1>
         <p>
-          Observe daily mNAV behavior for Strategy, BitMine Immersion, and XXI.
+          Observe daily mNAV behavior for Strategy, BitMine Immersion, XXI, and sovereign proxies (US, UK, China).
         </p>
       </header>
 
@@ -25,6 +25,9 @@
             <option value="MSTR">Strategy (MSTR)</option>
             <option value="BMNR">BitMine Immersion (BMNR)</option>
             <option value="XXI">XXI</option>
+            <option value="US">US (Proxy)</option>
+            <option value="UK">UK (Proxy)</option>
+            <option value="CHINA">China (Proxy)</option>
           </select>
         </div>
         <div>
@@ -58,6 +61,18 @@
             <label for="xxiBps">XXI BTC / Share</label>
             <input id="xxiBps" type="number" step="0.0000001" value="0.00105" />
           </div>
+          <div>
+            <label for="usBps">US Proxy BTC / Unit</label>
+            <input id="usBps" type="number" step="0.0000001" value="0.00045" />
+          </div>
+          <div>
+            <label for="ukBps">UK Proxy BTC / Unit</label>
+            <input id="ukBps" type="number" step="0.0000001" value="0.00012" />
+          </div>
+          <div>
+            <label for="chinaBps">China Proxy BTC / Unit</label>
+            <input id="chinaBps" type="number" step="0.0000001" value="0.00025" />
+          </div>
         </div>
       </section>
 
@@ -89,6 +104,9 @@
         <p>
           Equity daily closes: Stooq CSV (via CORS proxy):
           <code>https://stooq.com/q/d/l/?s={ticker}.us&i=d</code>
+        </p>
+        <p>
+          Sovereign proxies use ETF/index symbols: US=`SPY`, UK=`EWU`, China=`MCHI`.
         </p>
       </section>
     </main>

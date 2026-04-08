@@ -10,13 +10,28 @@ const apiKeyEl = document.getElementById("openAiKey");
 const mstrBpsEl = document.getElementById("mstrBps");
 const bmnrBpsEl = document.getElementById("bmnrBps");
 const xxiBpsEl = document.getElementById("xxiBps");
+const usBpsEl = document.getElementById("usBps");
+const ukBpsEl = document.getElementById("ukBps");
+const chinaBpsEl = document.getElementById("chinaBps");
 
 let chart;
 let currentSeriesByCompany = {};
+let currentDateLabels = [];
 const COMPANY_META = {
   MSTR: { label: "Strategy (MSTR)", color: "#58a6ff" },
   BMNR: { label: "BitMine Immersion (BMNR)", color: "#7ee787" },
   XXI: { label: "XXI", color: "#d2a8ff" },
+  US: { label: "US (Proxy)", color: "#f2cc60" },
+  UK: { label: "UK (Proxy)", color: "#ffa657" },
+  CHINA: { label: "China (Proxy)", color: "#ff7b72" },
+};
+const PRICE_SYMBOL_BY_ENTITY = {
+  MSTR: "MSTR",
+  BMNR: "BMNR",
+  XXI: "XXI",
+  US: "SPY",
+  UK: "EWU",
+  CHINA: "MCHI",
 };
 
 function formatDate(ts) {
@@ -93,11 +108,10 @@ function renderStats() {
 function renderChart() {
   const picked = getCompanySeries();
   const ctx = document.getElementById("indicatorChart");
-  const first = picked.find(([, series]) => (series || []).length > 0);
-  const labels = (first?.[1] || []).map(([ts]) => formatDate(ts));
+  const labels = currentDateLabels;
   const datasets = picked.map(([ticker, series]) => ({
     label: COMPANY_META[ticker].label,
-    data: (series || []).map(([, v]) => v),
+    data: labels.map((date) => toMap(series || []).get(date) ?? null),
     borderColor: COMPANY_META[ticker].color,
     backgroundColor: `${COMPANY_META[ticker].color}33`,
     borderWidth: 2,
@@ -123,10 +137,32 @@ function renderChart() {
 
 async function fetchStockSeries(ticker) {
   const stooqUrl = encodeURIComponent(`https://stooq.com/q/d/l/?s=${ticker.toLowerCase()}.us&i=d`);
-  const res = await fetch(`${STOOQ_PROXY}${stooqUrl}`);
-  if (!res.ok) throw new Error(`Failed stock fetch for ${ticker}.`);
-  const csv = await res.text();
-  return parseCsv(csv);
+  try {
+    const res = await fetch(`${STOOQ_PROXY}${stooqUrl}`);
+    if (res.ok) {
+      const csv = await res.text();
+      const parsed = parseCsv(csv);
+      if (parsed.length) return parsed;
+    }
+  } catch (err) {
+    // try Yahoo as fallback
+  }
+
+  const yahooRange = daysEl.value === "max" ? "5y" : `${daysEl.value}d`;
+  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${yahooRange}`;
+  const yahooResp = await fetch(yahooUrl);
+  if (!yahooResp.ok) throw new Error(`Failed stock fetch for ${ticker}.`);
+  const yahooPayload = await yahooResp.json();
+  const result = yahooPayload?.chart?.result?.[0];
+  const timestamps = result?.timestamp || [];
+  const closes = result?.indicators?.quote?.[0]?.close || [];
+  const out = [];
+  for (let i = 0; i < timestamps.length; i += 1) {
+    const close = Number(closes[i]);
+    if (!Number.isFinite(close)) continue;
+    out.push([timestamps[i] * 1000, close]);
+  }
+  return out;
 }
 
 function cutLookback(series, days) {
@@ -138,28 +174,40 @@ function cutLookback(series, days) {
 
 async function fetchData() {
   const days = daysEl.value;
-  const [btcResp, mstrRaw, bmnrRaw, xxiRaw] = await Promise.all([
+  summaryEl.textContent = "Loading data...";
+  const [btcResp, mstrResult, bmnrResult, xxiResult, usResult, ukResult, chinaResult] = await Promise.all([
     fetch(`${BTC_API_BASE}?vs_currency=usd&days=${days}&interval=daily`),
-    fetchStockSeries("MSTR"),
-    fetchStockSeries("BMNR"),
-    fetchStockSeries("XXI"),
+    fetchStockSeries(PRICE_SYMBOL_BY_ENTITY.MSTR).catch(() => []),
+    fetchStockSeries(PRICE_SYMBOL_BY_ENTITY.BMNR).catch(() => []),
+    fetchStockSeries(PRICE_SYMBOL_BY_ENTITY.XXI).catch(() => []),
+    fetchStockSeries(PRICE_SYMBOL_BY_ENTITY.US).catch(() => []),
+    fetchStockSeries(PRICE_SYMBOL_BY_ENTITY.UK).catch(() => []),
+    fetchStockSeries(PRICE_SYMBOL_BY_ENTITY.CHINA).catch(() => []),
   ]);
   if (!btcResp.ok) throw new Error("Failed to fetch BTC data.");
   const btcPayload = await btcResp.json();
   const btcSeries = cutLookback(btcPayload.prices || [], days);
+  currentDateLabels = btcSeries.map(([ts]) => formatDate(ts));
   const bps = {
     MSTR: Number(mstrBpsEl.value),
     BMNR: Number(bmnrBpsEl.value),
     XXI: Number(xxiBpsEl.value),
+    US: Number(usBpsEl.value),
+    UK: Number(ukBpsEl.value),
+    CHINA: Number(chinaBpsEl.value),
   };
 
   currentSeriesByCompany = {
-    MSTR: computeMNAVSeries(cutLookback(mstrRaw, days), btcSeries, bps.MSTR),
-    BMNR: computeMNAVSeries(cutLookback(bmnrRaw, days), btcSeries, bps.BMNR),
-    XXI: computeMNAVSeries(cutLookback(xxiRaw, days), btcSeries, bps.XXI),
+    MSTR: computeMNAVSeries(cutLookback(mstrResult, days), btcSeries, bps.MSTR),
+    BMNR: computeMNAVSeries(cutLookback(bmnrResult, days), btcSeries, bps.BMNR),
+    XXI: computeMNAVSeries(cutLookback(xxiResult, days), btcSeries, bps.XXI),
+    US: computeMNAVSeries(cutLookback(usResult, days), btcSeries, bps.US),
+    UK: computeMNAVSeries(cutLookback(ukResult, days), btcSeries, bps.UK),
+    CHINA: computeMNAVSeries(cutLookback(chinaResult, days), btcSeries, bps.CHINA),
   };
   renderChart();
   renderStats();
+  summaryEl.textContent = "Data loaded. Generate summary to analyze trends.";
 }
 
 function flattenSeriesForSummary() {
