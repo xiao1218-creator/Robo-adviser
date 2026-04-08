@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>mNAV Tracker Dashboard</title>
+    <title>BTC Holdings Tracker</title>
     <link rel="stylesheet" href="./styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
     <script src="./script.js" defer></script>
@@ -11,9 +11,9 @@
   <body>
     <main class="container">
       <header class="header">
-        <h1>mNAV Tracker Dashboard</h1>
+        <h1>BTC Holdings Tracker</h1>
         <p>
-          Observe daily mNAV behavior for Strategy, BitMine Immersion, XXI, and sovereign proxies (US, UK, China).
+          Track BTC holdings over time for Strategy, BitMine Immersion, XXI, the US, the UK, and China.
         </p>
       </header>
 
@@ -21,7 +21,7 @@
         <div>
           <label for="indicator">Chart Mode</label>
           <select id="indicator">
-            <option value="combined" selected>All Companies (mNAV)</option>
+            <option value="combined" selected>All Entities (BTC Holdings)</option>
             <option value="MSTR">Strategy (MSTR)</option>
             <option value="BMNR">BitMine Immersion (BMNR)</option>
             <option value="XXI">XXI</option>
@@ -43,7 +43,7 @@
       </section>
 
       <section class="panel">
-        <h2>mNAV Assumptions</h2>
+        <h2>BTC Holdings Inputs</h2>
         <p class="muted">
           Track disclosed BTC holdings directly. Update values below when new filings/disclosures are released.
         </p>
@@ -96,7 +96,7 @@
           <input id="llmKey" type="password" placeholder="API key..." />
           <button id="summarizeBtn">Generate Summary</button>
         </div>
-        <article id="summary" class="summary">Click "Generate Summary" to analyze the selected indicator.</article>
+        <article id="summary" class="summary">Click "Generate Summary" to analyze the selected BTC holdings.</article>
       </section>
 
       <section class="panel">

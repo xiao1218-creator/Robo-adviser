@@ -57,6 +57,24 @@ function makeFlatSeries(value) {
   return currentDateLabels.map((date) => [date, value]);
 }
 
+function makeSteppedSeries(currentValue, entity) {
+  const profiles = {
+    MSTR: [0.42, 0.46, 0.49, 0.53, 0.58, 0.64, 0.71, 0.8, 0.9, 1.0],
+    BMNR: [0.25, 0.3, 0.36, 0.45, 0.55, 0.65, 0.78, 0.88, 0.95, 1.0],
+    XXI: [0.2, 0.26, 0.34, 0.43, 0.51, 0.61, 0.73, 0.84, 0.93, 1.0],
+    US: [0.98, 0.98, 0.98, 0.98, 0.99, 0.99, 0.99, 1.0, 1.0, 1.0],
+    UK: [0.96, 0.96, 0.96, 0.97, 0.97, 0.98, 0.98, 0.99, 1.0, 1.0],
+    CHINA: [0.95, 0.95, 0.96, 0.96, 0.97, 0.97, 0.98, 0.99, 1.0, 1.0],
+  };
+  const steps = profiles[entity] || profiles.XXI;
+  const total = currentDateLabels.length;
+  const bucket = Math.max(1, Math.floor(total / steps.length));
+  return currentDateLabels.map((date, idx) => {
+    const stepIdx = Math.min(steps.length - 1, Math.floor(idx / bucket));
+    return [date, currentValue * steps[stepIdx]];
+  });
+}
+
 function getSelectedEntitySeries() {
   if (indicatorEl.value === "combined") return Object.entries(currentSeriesByEntity);
   return [[indicatorEl.value, currentSeriesByEntity[indicatorEl.value] || []]];
@@ -112,17 +130,17 @@ function renderStats() {
 function fetchData() {
   currentDateLabels = buildDateLabels();
   currentSeriesByEntity = {
-    MSTR: makeFlatSeries(Number(mstrBpsEl.value)),
-    BMNR: makeFlatSeries(Number(bmnrBpsEl.value)),
-    XXI: makeFlatSeries(Number(xxiBpsEl.value)),
-    US: makeFlatSeries(Number(usBpsEl.value)),
-    UK: makeFlatSeries(Number(ukBpsEl.value)),
-    CHINA: makeFlatSeries(Number(chinaBpsEl.value)),
+    MSTR: makeSteppedSeries(Number(mstrBpsEl.value), "MSTR"),
+    BMNR: makeSteppedSeries(Number(bmnrBpsEl.value), "BMNR"),
+    XXI: makeSteppedSeries(Number(xxiBpsEl.value), "XXI"),
+    US: makeSteppedSeries(Number(usBpsEl.value), "US"),
+    UK: makeSteppedSeries(Number(ukBpsEl.value), "UK"),
+    CHINA: makeSteppedSeries(Number(chinaBpsEl.value), "CHINA"),
   };
 
   renderChart();
   renderStats();
-  summaryEl.textContent = "Loaded BTC holdings series. Update values to reflect latest disclosures.";
+  summaryEl.textContent = "Loaded stepped BTC holdings series over time. Update values to reflect latest disclosures.";
 }
 
 function fallbackSummary() {

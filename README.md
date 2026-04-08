@@ -1,4 +1,4 @@
-# mNAV Tracker Website
+# BTC Holdings Tracker Website
 
 This project is a lightweight website for observing BTC holdings for selected companies and countries.
 
@@ -25,7 +25,7 @@ Tracked entities:
 - Company selection (single or combined)
 - Lookback window selection (90/180/365/max days)
 - Editable BTC holdings per entity
-- Quick stats (latest, average, min, max)
+- Quick stats (current holdings by entity)
 - Optional AI-generated summary via Gemini or OpenAI API
   - If no API key is entered, a built-in rule-based summary is shown
 
