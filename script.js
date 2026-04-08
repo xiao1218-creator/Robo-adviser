@@ -73,22 +73,6 @@ function computeMNAVSeries(stockSeries, btcSeries, btcPerShare) {
   });
 }
 
-function fallbackStockFromBtc(btcSeries, ticker) {
-  const seedMap = {
-    MSTR: { mult: 0.00176, premium: 1.7 },
-    BMNR: { mult: 0.00032, premium: 1.35 },
-    XXI: { mult: 0.00105, premium: 1.45 },
-    SPY: { mult: 0.00045, premium: 1.05 },
-    EWU: { mult: 0.00012, premium: 0.95 },
-    MCHI: { mult: 0.00025, premium: 0.9 },
-  };
-  const cfg = seedMap[ticker] || { mult: 0.0005, premium: 1.0 };
-  return btcSeries.map(([ts, btc], idx) => {
-    const wave = 1 + 0.04 * Math.sin(idx / 16);
-    return [ts, btc * cfg.mult * cfg.premium * wave];
-  });
-}
-
 function getCompanySeries() {
   const mode = indicatorEl.value;
   if (mode === "combined") return Object.entries(currentSeriesByCompany);
@@ -240,12 +224,7 @@ async function fetchData() {
 
   currentDataStatus = {};
   Object.keys(resolved).forEach((k) => {
-    if (!resolved[k].length) {
-      resolved[k] = fallbackStockFromBtc(btcSeries, tickerByEntity[k]);
-      currentDataStatus[k] = "fallback";
-    } else {
-      currentDataStatus[k] = "live";
-    }
+    currentDataStatus[k] = resolved[k].length ? "live" : `missing (${tickerByEntity[k]})`;
   });
 
   currentSeriesByCompany = {
@@ -258,11 +237,12 @@ async function fetchData() {
   };
   renderChart();
   renderStats();
-  const fallbackCount = Object.values(currentDataStatus).filter((v) => v === "fallback").length;
-  summaryEl.textContent =
-    fallbackCount > 0
-      ? `Data loaded with ${fallbackCount} fallback series (API unavailable). Generate summary to analyze trends.`
-      : "Data loaded from live sources. Generate summary to analyze trends.";
+  const missing = Object.entries(currentDataStatus)
+    .filter(([, status]) => status !== "live")
+    .map(([entity, status]) => `${entity}: ${status}`);
+  summaryEl.textContent = missing.length
+    ? `Loaded real-world data with gaps -> ${missing.join(", ")}.`
+    : "Loaded real-world data from all sources.";
 }
 
 function flattenSeriesForSummary() {
