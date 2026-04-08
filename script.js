@@ -1,5 +1,7 @@
 const BTC_API_BASE = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart";
 const STOOQ_PROXY = "https://api.allorigins.win/raw?url=";
+const ALPHA_VANTAGE_API = "https://www.alphavantage.co/query";
+const ALPHA_VANTAGE_KEY = "demo";
 const indicatorEl = document.getElementById("indicator");
 const daysEl = document.getElementById("days");
 const refreshBtn = document.getElementById("refreshBtn");
@@ -55,6 +57,20 @@ function parseCsv(csv) {
     if (!Number.isFinite(close)) continue;
     out.push([Date.parse(`${date}T00:00:00Z`), close]);
   }
+  return out;
+}
+
+function parseAlphaVantageDaily(payload) {
+  const series = payload?.["Time Series (Daily)"];
+  if (!series || typeof series !== "object") return [];
+  const out = Object.entries(series)
+    .map(([date, row]) => {
+      const close = Number(row?.["4. close"]);
+      if (!Number.isFinite(close)) return null;
+      return [Date.parse(`${date}T00:00:00Z`), close];
+    })
+    .filter(Boolean)
+    .sort((a, b) => a[0] - b[0]);
   return out;
 }
 
@@ -138,6 +154,22 @@ function renderChart() {
 }
 
 async function fetchStockSeries(ticker) {
+  // 1) Alpha Vantage (primary alternative source)
+  try {
+    const alphaUrl = `${ALPHA_VANTAGE_API}?function=TIME_SERIES_DAILY&symbol=${encodeURIComponent(
+      ticker
+    )}&outputsize=full&apikey=${encodeURIComponent(ALPHA_VANTAGE_KEY)}`;
+    const alphaResp = await fetch(alphaUrl);
+    if (alphaResp.ok) {
+      const alphaPayload = await alphaResp.json();
+      const parsed = parseAlphaVantageDaily(alphaPayload);
+      if (parsed.length) return parsed;
+    }
+  } catch (err) {
+    // try other providers
+  }
+
+  // 2) Stooq via proxy
   const stooqUrl = encodeURIComponent(`https://stooq.com/q/d/l/?s=${ticker.toLowerCase()}.us&i=d`);
   try {
     const res = await fetch(`${STOOQ_PROXY}${stooqUrl}`);
@@ -150,6 +182,7 @@ async function fetchStockSeries(ticker) {
     // try Yahoo as fallback
   }
 
+  // 3) Yahoo fallback
   const yahooRange = daysEl.value === "max" ? "5y" : `${daysEl.value}d`;
   const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${yahooRange}`;
   try {
