@@ -16,8 +16,9 @@ Tracked entities:
 
 ## Data Source
 
-- BTC holdings are entered as disclosed amounts and can be updated directly in the UI.
-- Use latest company filings and public treasury trackers to keep values current.
+- Public company holdings: CoinGecko public treasury API (`/companies/public_treasury/bitcoin`)
+- Government holdings: BitcoinTreasuries public government pages (fetched via public CORS proxy)
+- Manual inputs remain as fallback when a public source is temporarily unavailable.
 
 ## Features
 

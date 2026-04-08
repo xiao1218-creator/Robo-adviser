@@ -18,8 +18,7 @@ let chart;
 let currentSeriesByEntity = {};
 let currentDateLabels = [];
 let currentSourceStatus = {};
-
-const COINGECKO_COMPANIES_URL = "https://api.coingecko.com/api/v3/companies/public_treasury/bitcoin";
+const CG_COMPANIES_URL = "https://api.coingecko.com/api/v3/companies/public_treasury/bitcoin";
 const ALL_ORIGINS_RAW = "https://api.allorigins.win/raw?url=";
 
 const ENTITY_META = {
@@ -85,6 +84,21 @@ function makeSteppedSeries(currentValue, entity) {
   });
 }
 
+async function fetchCoinGeckoCompaniesFallback() {
+  const res = await fetch(CG_COMPANIES_URL);
+  if (!res.ok) return {};
+  const payload = await res.json();
+  const companies = payload?.companies || [];
+  const out = {};
+  companies.forEach((c) => {
+    const s = String(c.symbol || "").toUpperCase();
+    if (s.startsWith("MSTR")) out.MSTR = Number(c.total_holdings);
+    if (s.startsWith("BMNR")) out.BMNR = Number(c.total_holdings);
+    if (s.startsWith("XXI")) out.XXI = Number(c.total_holdings);
+  });
+  return out;
+}
+
 function parseHoldingNumber(text) {
   if (!text) return null;
   const cleaned = text.replace(/,/g, "").trim();
@@ -108,21 +122,6 @@ function parseGovHoldingFromHtml(html) {
   return null;
 }
 
-async function fetchCoinGeckoCompanyHoldings() {
-  const res = await fetch(COINGECKO_COMPANIES_URL);
-  if (!res.ok) throw new Error("CoinGecko companies request failed.");
-  const payload = await res.json();
-  const companies = payload?.companies || [];
-  const bySymbol = {};
-  companies.forEach((c) => {
-    const s = String(c.symbol || "").toUpperCase();
-    if (s.startsWith("MSTR")) bySymbol.MSTR = Number(c.total_holdings);
-    if (s.startsWith("BMNR")) bySymbol.BMNR = Number(c.total_holdings);
-    if (s.startsWith("XXI")) bySymbol.XXI = Number(c.total_holdings);
-  });
-  return bySymbol;
-}
-
 async function fetchGovHolding(entity) {
   const url = GOV_PAGE_BY_ENTITY[entity];
   if (!url) return null;
@@ -143,29 +142,36 @@ async function fetchLiveHoldings() {
     CHINA: Number(chinaBpsEl.value),
   };
 
-  const [cg, us, uk, china] = await Promise.all([
-    fetchCoinGeckoCompanyHoldings().catch(() => ({})),
+  const [cgCompanies, us, uk, china] = await Promise.all([
+    fetchCoinGeckoCompaniesFallback().catch(() => ({})),
     fetchGovHolding("US").catch(() => null),
     fetchGovHolding("UK").catch(() => null),
     fetchGovHolding("CHINA").catch(() => null),
   ]);
+  const byEntity = {};
+  if (!Number.isFinite(byEntity.MSTR) && Number.isFinite(cgCompanies.MSTR)) byEntity.MSTR = cgCompanies.MSTR;
+  if (!Number.isFinite(byEntity.BMNR) && Number.isFinite(cgCompanies.BMNR)) byEntity.BMNR = cgCompanies.BMNR;
+  if (!Number.isFinite(byEntity.XXI) && Number.isFinite(cgCompanies.XXI)) byEntity.XXI = cgCompanies.XXI;
+  byEntity.US = us;
+  byEntity.UK = uk;
+  byEntity.CHINA = china;
 
   currentSourceStatus = {};
   const resolved = {
-    MSTR: Number.isFinite(cg.MSTR) ? cg.MSTR : currentManual.MSTR,
-    BMNR: Number.isFinite(cg.BMNR) ? cg.BMNR : currentManual.BMNR,
-    XXI: Number.isFinite(cg.XXI) ? cg.XXI : currentManual.XXI,
-    US: Number.isFinite(us) ? us : currentManual.US,
-    UK: Number.isFinite(uk) ? uk : currentManual.UK,
-    CHINA: Number.isFinite(china) ? china : currentManual.CHINA,
+    MSTR: Number.isFinite(byEntity.MSTR) ? byEntity.MSTR : currentManual.MSTR,
+    BMNR: Number.isFinite(byEntity.BMNR) ? byEntity.BMNR : currentManual.BMNR,
+    XXI: Number.isFinite(byEntity.XXI) ? byEntity.XXI : currentManual.XXI,
+    US: Number.isFinite(byEntity.US) ? byEntity.US : currentManual.US,
+    UK: Number.isFinite(byEntity.UK) ? byEntity.UK : currentManual.UK,
+    CHINA: Number.isFinite(byEntity.CHINA) ? byEntity.CHINA : currentManual.CHINA,
   };
 
-  currentSourceStatus.MSTR = Number.isFinite(cg.MSTR) ? "CoinGecko" : "Manual";
-  currentSourceStatus.BMNR = Number.isFinite(cg.BMNR) ? "CoinGecko" : "Manual";
-  currentSourceStatus.XXI = Number.isFinite(cg.XXI) ? "CoinGecko" : "Manual";
-  currentSourceStatus.US = Number.isFinite(us) ? "BitcoinTreasuries" : "Manual";
-  currentSourceStatus.UK = Number.isFinite(uk) ? "BitcoinTreasuries" : "Manual";
-  currentSourceStatus.CHINA = Number.isFinite(china) ? "BitcoinTreasuries" : "Manual";
+  currentSourceStatus.MSTR = Number.isFinite(byEntity.MSTR) ? "CoinGecko" : "Manual";
+  currentSourceStatus.BMNR = Number.isFinite(byEntity.BMNR) ? "CoinGecko" : "Manual";
+  currentSourceStatus.XXI = Number.isFinite(byEntity.XXI) ? "CoinGecko" : "Manual";
+  currentSourceStatus.US = Number.isFinite(byEntity.US) ? "BitcoinTreasuries" : "Manual";
+  currentSourceStatus.UK = Number.isFinite(byEntity.UK) ? "BitcoinTreasuries" : "Manual";
+  currentSourceStatus.CHINA = Number.isFinite(byEntity.CHINA) ? "BitcoinTreasuries" : "Manual";
 
   return resolved;
 }
@@ -224,7 +230,7 @@ function renderStats() {
 
 async function fetchData() {
   currentDateLabels = buildDateLabels();
-  summaryEl.textContent = "Loading live holdings from multiple sources...";
+  summaryEl.textContent = "Loading live holdings from public sources...";
   const live = await fetchLiveHoldings();
 
   // Sync inputs with latest fetched values so UI is transparent.
