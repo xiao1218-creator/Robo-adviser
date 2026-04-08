@@ -1,31 +1,42 @@
-# DAT.co Indicator Website
+# mNAV Tracker Website
 
-This project is a lightweight website for observing the daily time-series behavior of a DAT.co-related indicator.
+This project is a lightweight website for observing daily mNAV behavior for selected Bitcoin treasury companies.
 
-## Chosen Indicator
+## Tracked Indicator
 
-Primary indicator: **DAT Price (USD)** for **Digital ASSet Treasury (DAT)**.
+Primary indicator: **mNAV**.
 
-Additional derived indicators included:
-- 7-Day Return (%)
-- 30-Day Volatility (%)
+Tracked companies:
+- Strategy (`MSTR`)
+- BitMine Immersion (`BMNR`)
+- XXI (`XXI`)
 
 ## Data Source
 
-Public API (CoinGecko):
+Public APIs:
 
-- Coin: `digital-asset-treasury`
-- Endpoint:
-  `https://api.coingecko.com/api/v3/coins/digital-asset-treasury/market_chart?vs_currency=usd&days={n}&interval=daily`
+- BTC daily close (CoinGecko):
+  `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={n}&interval=daily`
+- Equity daily close (Stooq CSV via CORS proxy):
+  `https://stooq.com/q/d/l/?s={ticker}.us&i=d`
 
 ## Features
 
-- Daily time-series line chart
-- Indicator selection
+- Daily time-series mNAV chart
+- Company selection (single or combined)
 - Lookback window selection (90/180/365/max days)
+- Editable BTC/share assumptions per company
 - Quick stats (latest, average, min, max)
 - Optional AI-generated summary via OpenAI API
   - If no API key is entered, a built-in rule-based summary is shown
+
+## mNAV Formula
+
+The dashboard uses:
+
+`mNAV = Stock Price / (BTC Price x BTC Per Share)`
+
+BTC/share defaults are editable in the UI so you can keep assumptions updated with latest filings.
 
 ## Local Run
 

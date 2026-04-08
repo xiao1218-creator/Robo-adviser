@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DAT.co Indicator Dashboard</title>
+    <title>mNAV Tracker Dashboard</title>
     <link rel="stylesheet" href="./styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
     <script src="./script.js" defer></script>
@@ -11,19 +11,20 @@
   <body>
     <main class="container">
       <header class="header">
-        <h1>DAT.co Indicator Dashboard</h1>
+        <h1>mNAV Tracker Dashboard</h1>
         <p>
-          Observe daily time-series behavior of DAT (Digital ASSet Treasury) indicators from CoinGecko data.
+          Observe daily mNAV behavior for Strategy, BitMine Immersion, and XXI.
         </p>
       </header>
 
       <section class="panel controls">
         <div>
-          <label for="indicator">Indicator</label>
+          <label for="indicator">Chart Mode</label>
           <select id="indicator">
-            <option value="price">DAT Price (USD)</option>
-            <option value="return7d">7-Day Return (%)</option>
-            <option value="volatility30d">30-Day Volatility (%)</option>
+            <option value="combined" selected>All Companies (mNAV)</option>
+            <option value="MSTR">Strategy (MSTR)</option>
+            <option value="BMNR">BitMine Immersion (BMNR)</option>
+            <option value="XXI">XXI</option>
           </select>
         </div>
         <div>
@@ -36,6 +37,28 @@
           </select>
         </div>
         <button id="refreshBtn">Refresh</button>
+      </section>
+
+      <section class="panel">
+        <h2>mNAV Assumptions</h2>
+        <p class="muted">
+          mNAV is approximated as: <code>Stock Price / (BTC Price × BTC Per Share)</code>.
+          Update BTC/share assumptions below when new filings are released.
+        </p>
+        <div class="controls">
+          <div>
+            <label for="mstrBps">MSTR BTC / Share</label>
+            <input id="mstrBps" type="number" step="0.0000001" value="0.00176" />
+          </div>
+          <div>
+            <label for="bmnrBps">BMNR BTC / Share</label>
+            <input id="bmnrBps" type="number" step="0.0000001" value="0.00032" />
+          </div>
+          <div>
+            <label for="xxiBps">XXI BTC / Share</label>
+            <input id="xxiBps" type="number" step="0.0000001" value="0.00105" />
+          </div>
+        </div>
       </section>
 
       <section class="panel">
@@ -60,8 +83,12 @@
       <section class="panel">
         <h2>Data Source</h2>
         <p>
-          CoinGecko public API endpoint:
-          <code>/api/v3/coins/digital-asset-treasury/market_chart?vs_currency=usd&days={n}&interval=daily</code>
+          BTC price: CoinGecko public API
+          <code>/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={n}&interval=daily</code>
+        </p>
+        <p>
+          Equity daily closes: Stooq CSV (via CORS proxy):
+          <code>https://stooq.com/q/d/l/?s={ticker}.us&i=d</code>
         </p>
       </section>
     </main>
