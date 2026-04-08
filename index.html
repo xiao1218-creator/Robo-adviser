@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DAT.co Indicator Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+    <script src="./script.js" defer></script>
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <h1>DAT.co Indicator Dashboard</h1>
+        <p>
+          Observe daily time-series behavior of DAT (Digital ASSet Treasury) indicators from CoinGecko data.
+        </p>
+      </header>
+
+      <section class="panel controls">
+        <div>
+          <label for="indicator">Indicator</label>
+          <select id="indicator">
+            <option value="price">DAT Price (USD)</option>
+            <option value="return7d">7-Day Return (%)</option>
+            <option value="volatility30d">30-Day Volatility (%)</option>
+          </select>
+        </div>
+        <div>
+          <label for="days">Lookback</label>
+          <select id="days">
+            <option value="90">Last 90 Days</option>
+            <option value="180">Last 180 Days</option>
+            <option value="365" selected>Last 365 Days</option>
+            <option value="max">Max</option>
+          </select>
+        </div>
+        <button id="refreshBtn">Refresh</button>
+      </section>
+
+      <section class="panel">
+        <canvas id="indicatorChart" height="120"></canvas>
+      </section>
+
+      <section class="panel stats" id="stats"></section>
+
+      <section class="panel">
+        <h2>AI Summary (Optional Bonus)</h2>
+        <p class="muted">
+          Paste your LLM API key locally (not stored). If empty, a rule-based summary is shown.
+        </p>
+        <div class="ai-controls">
+          <label for="openAiKey">OpenAI API Key</label>
+          <input id="openAiKey" type="password" placeholder="sk-..." />
+          <button id="summarizeBtn">Generate Summary</button>
+        </div>
+        <article id="summary" class="summary">Click "Generate Summary" to analyze the selected indicator.</article>
+      </section>
+
+      <section class="panel">
+        <h2>Data Source</h2>
+        <p>
+          CoinGecko public API endpoint:
+          <code>/api/v3/coins/digital-asset-treasury/market_chart?vs_currency=usd&days={n}&interval=daily</code>
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
