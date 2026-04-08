@@ -108,17 +108,25 @@ function parseHoldingNumber(text) {
 
 function parseGovHoldingFromHtml(html) {
   if (!html) return null;
-  const patterns = [
-    /BTC balance[\s\S]{0,120}?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?)/i,
-    /hold\s+([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?)\s*BTC/i,
-  ];
-  for (const p of patterns) {
-    const m = html.match(p);
+  // Primary: locate the number immediately following the "BTC balance" label.
+  const balanceMatch = html.match(
+    /BTC balance[\s\S]{0,600}?\n\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?)\s*(?:\n|$)/i
+  );
+  if (balanceMatch?.[1]) {
+    const n = parseHoldingNumber(balanceMatch[1]);
+    if (n !== null) return n;
+  }
+
+  // Secondary: parse structured JSON-LD description text ("hold ... BTC").
+  const jsonLdMatches = html.match(/"description":"[^"]+"/gi) || [];
+  for (const snippet of jsonLdMatches) {
+    const m = snippet.match(/hold\s+([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?)\s*BTC/i);
     if (m?.[1]) {
       const n = parseHoldingNumber(m[1]);
       if (n !== null) return n;
     }
   }
+
   return null;
 }
 
