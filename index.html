@@ -45,33 +45,32 @@
       <section class="panel">
         <h2>mNAV Assumptions</h2>
         <p class="muted">
-          mNAV is approximated as: <code>Stock Price / (BTC Price × BTC Per Share)</code>.
-          Update BTC/share assumptions below when new filings are released.
+          Track disclosed BTC holdings directly. Update values below when new filings/disclosures are released.
         </p>
         <div class="controls">
           <div>
-            <label for="mstrBps">MSTR BTC / Share</label>
-            <input id="mstrBps" type="number" step="0.0000001" value="0.00176" />
+            <label for="mstrBps">MSTR BTC Holdings</label>
+            <input id="mstrBps" type="number" step="1" value="568840" />
           </div>
           <div>
-            <label for="bmnrBps">BMNR BTC / Share</label>
-            <input id="bmnrBps" type="number" step="0.0000001" value="0.00032" />
+            <label for="bmnrBps">BMNR BTC Holdings</label>
+            <input id="bmnrBps" type="number" step="1" value="15400" />
           </div>
           <div>
-            <label for="xxiBps">XXI BTC / Share</label>
-            <input id="xxiBps" type="number" step="0.0000001" value="0.00105" />
+            <label for="xxiBps">XXI BTC Holdings</label>
+            <input id="xxiBps" type="number" step="1" value="37000" />
           </div>
           <div>
-            <label for="usBps">US Proxy BTC / Unit</label>
-            <input id="usBps" type="number" step="0.0000001" value="0.00045" />
+            <label for="usBps">US BTC Holdings</label>
+            <input id="usBps" type="number" step="1" value="207189" />
           </div>
           <div>
-            <label for="ukBps">UK Proxy BTC / Unit</label>
-            <input id="ukBps" type="number" step="0.0000001" value="0.00012" />
+            <label for="ukBps">UK BTC Holdings</label>
+            <input id="ukBps" type="number" step="1" value="61245" />
           </div>
           <div>
-            <label for="chinaBps">China Proxy BTC / Unit</label>
-            <input id="chinaBps" type="number" step="0.0000001" value="0.00025" />
+            <label for="chinaBps">China BTC Holdings</label>
+            <input id="chinaBps" type="number" step="1" value="194000" />
           </div>
         </div>
       </section>
@@ -103,15 +102,7 @@
       <section class="panel">
         <h2>Data Source</h2>
         <p>
-          BTC price: CoinGecko public API
-          <code>/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={n}&interval=daily</code>
-        </p>
-        <p>
-          Equity daily closes: Stooq CSV (via CORS proxy):
-          <code>https://stooq.com/q/d/l/?s={ticker}.us&i=d</code>
-        </p>
-        <p>
-          Sovereign proxies use ETF/index symbols: US=`SPY`, UK=`EWU`, China=`MCHI`.
+          Holdings values are based on disclosed BTC treasury amounts and are editable in the UI.
         </p>
       </section>
     </main>

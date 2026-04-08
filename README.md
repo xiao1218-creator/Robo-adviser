@@ -1,10 +1,10 @@
 # mNAV Tracker Website
 
-This project is a lightweight website for observing daily mNAV behavior for selected Bitcoin treasury companies.
+This project is a lightweight website for observing BTC holdings for selected companies and countries.
 
 ## Tracked Indicator
 
-Primary indicator: **mNAV**.
+Primary indicator: **BTC Holdings**.
 
 Tracked entities:
 - Strategy (`MSTR`)
@@ -16,31 +16,23 @@ Tracked entities:
 
 ## Data Source
 
-Public APIs:
-
-- BTC daily close (CoinGecko):
-  `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days={n}&interval=daily`
-- Equity daily close (Stooq CSV via CORS proxy):
-  `https://stooq.com/q/d/l/?s={ticker}.us&i=d`
+- BTC holdings are entered as disclosed amounts and can be updated directly in the UI.
+- Use latest company filings and public treasury trackers to keep values current.
 
 ## Features
 
-- Daily time-series mNAV chart
+- Daily holdings chart
 - Company selection (single or combined)
 - Lookback window selection (90/180/365/max days)
-- Editable BTC/share assumptions per company/proxy
+- Editable BTC holdings per entity
 - Quick stats (latest, average, min, max)
 - Optional AI-generated summary via Gemini or OpenAI API
   - If no API key is entered, a built-in rule-based summary is shown
 
-## mNAV Formula
+## Holdings Behavior
 
-The dashboard uses:
-
-`mNAV = Stock Price / (BTC Price x BTC Per Share)`
-
-BTC/share defaults are editable in the UI so you can keep assumptions updated with latest filings.
-For US/UK/China, the dashboard uses ETF proxies (SPY/EWU/MCHI) as the numerator price series.
+The chart plots holdings over the selected period using the values entered in the UI.  
+When holdings change in disclosures, update the corresponding input and refresh.
 
 ## Local Run
 
